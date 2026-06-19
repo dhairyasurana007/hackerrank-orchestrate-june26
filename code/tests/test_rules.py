@@ -158,3 +158,23 @@ def test_empty_observation_is_nei_with_no_flags():
     assert out.evidence_standard_met is False
     assert out.risk_flags == []
     assert _row_is_valid(out)
+
+
+def test_severity_high_capped_to_medium_for_non_catastrophic_issue():
+    img = image(damage_visible=True, issue_type="dent")
+    out = rules.resolve(
+        record(),
+        observation(images=[img], leaning="supported", issue_type="dent", severity="high"),
+        history(),
+    )
+    assert out.severity == "medium"
+
+
+def test_severity_high_kept_for_catastrophic_issue():
+    img = image(damage_visible=True, issue_type="broken_part")
+    out = rules.resolve(
+        record(),
+        observation(images=[img], leaning="supported", issue_type="broken_part", severity="high"),
+        history(),
+    )
+    assert out.severity == "high"

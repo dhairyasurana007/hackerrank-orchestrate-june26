@@ -28,6 +28,9 @@ _QUALITY_MAP = {
     "angle": "wrong_angle",
 }
 
+# high severity is reserved for catastrophic damage types; everything else caps at medium.
+_CATASTROPHIC_ISSUES = {"broken_part", "missing_part", "glass_shatter", "crushed_packaging"}
+
 
 def _images(observation):
     return observation.get("images") or []
@@ -124,6 +127,11 @@ def resolve(record, observation, history):
         else "Submitted images are not sufficient to evaluate the claimed part."
     )
 
+    issue_type = obs.get("issue_type") or "unknown"
+    severity = obs.get("severity") or "unknown"
+    if severity == "high" and issue_type not in _CATASTROPHIC_ISSUES:
+        severity = "medium"
+
     return schema.OutputRecord(
         user_id=record.user_id,
         image_paths=record.image_paths,
@@ -132,7 +140,7 @@ def resolve(record, observation, history):
         evidence_standard_met=evidence_met,
         evidence_standard_met_reason=evidence_reason,
         risk_flags=sorted(flags),
-        issue_type=obs.get("issue_type") or "unknown",
+        issue_type=issue_type,
         object_part=obs.get("object_part") or "unknown",
         claim_status=status,
         claim_status_justification=(
@@ -140,5 +148,5 @@ def resolve(record, observation, history):
         ),
         supporting_image_ids=supporting,
         valid_image=valid_image,
-        severity=obs.get("severity") or "unknown",
+        severity=severity,
     )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from data import schema
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v3"
 
 SYSTEM_PROMPT = (
     "You are a meticulous insurance claims-evidence reviewer for car, laptop, and "
@@ -27,7 +27,18 @@ SYSTEM_PROMPT = (
     "echo the claimed values.\n"
     "4. User history may add risk context but must NEVER by itself change the "
     "decision.\n"
-    "5. Respond with ONLY a single valid JSON object in the requested shape.\n"
+    "5. Severity rates the damage VISIBLE in the image, even if it does not match the "
+    "claim. Always commit to none, low, medium, or high; use unknown ONLY when the image "
+    "is unusable. Calibrate carefully: none = part visible and undamaged; low = minor or "
+    "cosmetic (a light scratch, small scuff, tiny chip); medium = normal clearly-visible "
+    "damage to one part (a dent, a crack, a scratch through paint, a torn flap, a stain) "
+    "-- this is the MOST COMMON rating; high = ONLY catastrophic damage (glass fully "
+    "shattered, a part broken off or missing, severe crushing, or several parts "
+    "destroyed). A single dent, crack, or scratch is never high.\n"
+    "6. issue_type notes: use crack for any crack, including a cracked screen or glass; "
+    "reserve glass_shatter only for glass broken into pieces. Use stain for discoloration "
+    "or spots, and water_damage only for clear moisture or liquid damage.\n"
+    "7. Respond with ONLY a single valid JSON object in the requested shape.\n"
 )
 
 
