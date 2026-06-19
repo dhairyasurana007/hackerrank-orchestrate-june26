@@ -25,6 +25,23 @@ function imageUrl(path: string) {
   return `${API}/api/image?path=${encodeURIComponent(path)}`;
 }
 
+type Message = { role: "customer" | "agent"; speaker: string; text: string };
+
+function parseTranscript(text: string): Message[] {
+  return text
+    .split("|")
+    .map((turn) => turn.trim())
+    .filter(Boolean)
+    .map((turn) => {
+      const idx = turn.indexOf(":");
+      const speaker = idx >= 0 ? turn.slice(0, idx).trim() : "Support";
+      const body = idx >= 0 ? turn.slice(idx + 1).trim() : turn;
+      const role: "customer" | "agent" =
+        speaker.toLowerCase() === "customer" ? "customer" : "agent";
+      return { role, speaker, text: body };
+    });
+}
+
 export function App() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selected, setSelected] = useState<Claim | null>(null);
@@ -82,7 +99,14 @@ export function App() {
                 <span className={`tag ${selected.claim_object}`}>{selected.claim_object}</span>
                 {selected.user_id}
               </h2>
-              <p className="transcript">{selected.user_claim}</p>
+              <div className="chat">
+                {parseTranscript(selected.user_claim).map((msg, i) => (
+                  <div key={i} className={`bubble ${msg.role}`}>
+                    <span className="speaker">{msg.speaker}</span>
+                    <p>{msg.text}</p>
+                  </div>
+                ))}
+              </div>
               <div className="images">
                 {selected.image_paths.map((path, i) => (
                   <img key={path} src={imageUrl(path)} alt={selected.image_ids[i]} />
