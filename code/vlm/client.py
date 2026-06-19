@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
-import mimetypes
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,17 +35,68 @@ class VLMResponse:
     cached: bool
 
 
-def _media_type(path: Path) -> str:
-    guessed, _ = mimetypes.guess_type(str(path))
-    return guessed or "image/jpeg"
+_SUPPORTED_FORMATS = {"jpeg", "png", "gif", "webp"}
+
+
+def _sniff_format(raw: bytes) -> str | None:
+    """Detect the true image format from magic bytes (extensions are unreliable here)."""
+    if raw[:3] == b"\xff\xd8\xff":
+        return "jpeg"
+    if raw[:4] == b"\x89PNG":
+        return "png"
+    if raw[:3] == b"GIF":
+        return "gif"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _reencode_to_jpeg(path: Path) -> bytes:
+    """Decode any Pillow-readable image (including HEIC) and re-encode as JPEG."""
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise VLMError(
+            f"cannot decode {path.name}: install Pillow (and pillow-heif for HEIC)"
+        ) from exc
+    try:
+        import pillow_heif
+
+        pillow_heif.register_heif_opener()
+        register_avif = getattr(pillow_heif, "register_avif_opener", None)
+        if register_avif is not None:
+            register_avif()
+    except ImportError:
+        pass
+    try:
+        import pillow_avif  # noqa: F401  (registers AVIF support with Pillow on import)
+    except ImportError:
+        pass
+    try:
+        with Image.open(path) as image:
+            buffer = io.BytesIO()
+            image.convert("RGB").save(buffer, format="JPEG", quality=90)
+            return buffer.getvalue()
+    except Exception as exc:
+        raise VLMError(f"could not decode image {path.name}: {exc}") from exc
 
 
 def encode_image(path: Path) -> dict:
-    """Return an OpenAI-style image content block (base64 data URL)."""
+    """Return an OpenAI-style image content block, normalized to a supported format.
+
+    Many dataset files carry a .jpg extension but contain PNG/WebP/HEIC bytes, which
+    the provider rejects. We sniff the real format and re-encode unsupported ones.
+    """
     if not path.exists():
         raise VLMError(f"image not found: {path}")
-    b64 = base64.b64encode(path.read_bytes()).decode("ascii")
-    return {"type": "image_url", "image_url": {"url": f"data:{_media_type(path)};base64,{b64}"}}
+    raw = path.read_bytes()
+    fmt = _sniff_format(raw)
+    if fmt in _SUPPORTED_FORMATS:
+        data, media = raw, f"image/{fmt}"
+    else:
+        data, media = _reencode_to_jpeg(path), "image/jpeg"
+    b64 = base64.b64encode(data).decode("ascii")
+    return {"type": "image_url", "image_url": {"url": f"data:{media};base64,{b64}"}}
 
 
 def _is_retryable(exc: Exception) -> bool:

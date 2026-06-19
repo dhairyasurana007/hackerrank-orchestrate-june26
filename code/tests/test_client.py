@@ -89,3 +89,20 @@ def test_usage_counters(tmp_path):
     assert client.stats["input_tokens"] == 12
     assert client.stats["output_tokens"] == 7
     assert client.stats["images"] == 1
+
+
+def test_sniff_detects_webp_despite_jpg_extension(tmp_path):
+    path = tmp_path / "x.jpg"
+    path.write_bytes(b"RIFF\x00\x00\x00\x00WEBPVP8 ")
+    assert vlm.encode_image(path)["image_url"]["url"].startswith("data:image/webp")
+
+
+def test_all_sample_images_encode_to_supported_format():
+    import config
+    from data import loaders
+
+    supported = ("data:image/jpeg", "data:image/png", "data:image/webp", "data:image/gif")
+    for record in loaders.load_claims(config.SAMPLE_CLAIMS_CSV):
+        for img in record.images:
+            url = vlm.encode_image(img.path)["image_url"]["url"]
+            assert url.startswith(supported), f"{img.path.name}: {url[:25]}"
