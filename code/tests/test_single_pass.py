@@ -15,7 +15,7 @@ class FakeClient:
         self.raise_exc = raise_exc
         self.calls = 0
 
-    def complete(self, system, user_text, image_paths=()):
+    def complete(self, system, user_text, image_paths=(), escalate=None):
         self.calls += 1
         if self.raise_exc is not None:
             raise self.raise_exc

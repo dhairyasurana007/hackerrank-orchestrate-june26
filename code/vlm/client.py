@@ -51,8 +51,8 @@ def _sniff_format(raw: bytes) -> str | None:
     return None
 
 
-def _reencode_to_jpeg(path: Path) -> bytes:
-    """Decode any Pillow-readable image (including HEIC) and re-encode as JPEG."""
+def _reencode_to_jpeg(path: Path, max_dim=None) -> bytes:
+    """Decode any Pillow-readable image (including HEIC/AVIF), shrink, re-encode as JPEG."""
     try:
         from PIL import Image
     except ImportError as exc:
@@ -74,8 +74,11 @@ def _reencode_to_jpeg(path: Path) -> bytes:
         pass
     try:
         with Image.open(path) as image:
+            rgb = image.convert("RGB")
+            if max_dim:
+                rgb.thumbnail((max_dim, max_dim))
             buffer = io.BytesIO()
-            image.convert("RGB").save(buffer, format="JPEG", quality=90)
+            rgb.save(buffer, format="JPEG", quality=90)
             return buffer.getvalue()
     except Exception as exc:
         raise VLMError(f"could not decode image {path.name}: {exc}") from exc
@@ -91,10 +94,10 @@ def encode_image(path: Path) -> dict:
         raise VLMError(f"image not found: {path}")
     raw = path.read_bytes()
     fmt = _sniff_format(raw)
-    if fmt in _SUPPORTED_FORMATS:
+    if fmt in _SUPPORTED_FORMATS and len(raw) <= config.MAX_IMAGE_BYTES:
         data, media = raw, f"image/{fmt}"
     else:
-        data, media = _reencode_to_jpeg(path), "image/jpeg"
+        data, media = _reencode_to_jpeg(path, config.MAX_IMAGE_DIM), "image/jpeg"
     b64 = base64.b64encode(data).decode("ascii")
     return {"type": "image_url", "image_url": {"url": f"data:{media};base64,{b64}"}}
 
@@ -142,6 +145,7 @@ def _parse_json(text: str) -> dict:
 @dataclass
 class VLMClient:
     model: str = field(default_factory=lambda: config.MODEL)
+    escalation_model: str = field(default_factory=lambda: config.ESCALATION_MODEL)
     transport: object = _default_transport
     cache_dir: Path = field(default_factory=lambda: config.CACHE_DIR)
     max_retries: int = field(default_factory=lambda: config.MAX_RETRIES)
@@ -175,18 +179,24 @@ class VLMClient:
             {"role": "user", "content": content},
         ]
 
-    def _call_with_retry(self, messages):
+    def _call_with_retry(self, messages, model):
         attempt = 0
         while True:
             try:
-                return self.transport(messages, self.model)
+                return self.transport(messages, model)
             except Exception as exc:
                 attempt += 1
                 if attempt > self.max_retries or not _is_retryable(exc):
                     raise VLMError(f"model call failed: {exc}") from exc
                 time.sleep(self._backoff(attempt))
 
-    def complete(self, system, user_text, image_paths=()) -> VLMResponse:
+    def _record(self, usage, images):
+        self.stats["calls"] += 1
+        self.stats["images"] += images
+        self.stats["input_tokens"] += usage.get("input_tokens", 0)
+        self.stats["output_tokens"] += usage.get("output_tokens", 0)
+
+    def complete(self, system, user_text, image_paths=(), escalate=None) -> VLMResponse:
         paths = [Path(p) for p in image_paths]
         key = self._cache_key(system, user_text, paths)
         cache_file = self.cache_dir / f"{key}.json"
@@ -194,12 +204,16 @@ class VLMClient:
             payload = json.loads(cache_file.read_text(encoding="utf-8"))
             self.stats["cache_hits"] += 1
             return VLMResponse(cached=True, **payload)
-        text, usage = self._call_with_retry(self._build_messages(system, user_text, paths))
+        messages = self._build_messages(system, user_text, paths)
+        text, usage = self._call_with_retry(messages, self.model)
         data = _parse_json(text)
-        self.stats["calls"] += 1
-        self.stats["images"] += len(paths)
-        self.stats["input_tokens"] += usage.get("input_tokens", 0)
-        self.stats["output_tokens"] += usage.get("output_tokens", 0)
+        self._record(usage, len(paths))
+        # Optional escalation to a stronger model on low-confidence results.
+        if escalate is not None and self.escalation_model and escalate(data):
+            text, usage = self._call_with_retry(messages, self.escalation_model)
+            data = _parse_json(text)
+            self._record(usage, 0)
+            self.stats["escalations"] = self.stats.get("escalations", 0) + 1
         payload = {"data": data, "raw_text": text, "usage": usage, "images": len(paths)}
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         cache_file.write_text(json.dumps(payload), encoding="utf-8")

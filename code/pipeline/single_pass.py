@@ -19,7 +19,12 @@ def process(record, client, histories, evidence_rules):
     user_prompt = prompts.build_user_prompt(record, history, applicable)
     image_paths = [img.path for img in record.images]
     try:
-        response = client.complete(prompts.SYSTEM_PROMPT, user_prompt, image_paths)
+        response = client.complete(
+            prompts.SYSTEM_PROMPT,
+            user_prompt,
+            image_paths,
+            escalate=lambda data: data.get("claim_status_leaning") == "not_enough_information",
+        )
         observation = response.data if isinstance(response.data, dict) else {}
     except VLMError:
         observation = {}

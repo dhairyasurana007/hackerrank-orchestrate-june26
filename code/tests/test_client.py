@@ -106,3 +106,52 @@ def test_all_sample_images_encode_to_supported_format():
         for img in record.images:
             url = vlm.encode_image(img.path)["image_url"]["url"]
             assert url.startswith(supported), f"{img.path.name}: {url[:25]}"
+
+
+def test_oversized_image_is_resized(tmp_path, monkeypatch):
+    import base64
+    import io
+
+    from PIL import Image
+
+    monkeypatch.setattr(vlm.config, "MAX_IMAGE_BYTES", 10)
+    big = tmp_path / "big.png"
+    Image.new("RGB", (3000, 2000), (180, 20, 20)).save(big)
+    url = vlm.encode_image(big)["image_url"]["url"]
+    assert url.startswith("data:image/jpeg")
+    decoded = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
+    assert max(decoded.size) <= vlm.config.MAX_IMAGE_DIM
+
+
+class _ModelTransport:
+    def __init__(self, by_model):
+        self.by_model = by_model
+        self.calls = []
+
+    def __call__(self, messages, model):
+        self.calls.append(model)
+        return json.dumps(self.by_model[model]), {"input_tokens": 1, "output_tokens": 1}
+
+
+def test_escalation_calls_stronger_model(tmp_path):
+    transport = _ModelTransport({"base": {"x": 1}, "strong": {"x": 2}})
+    client = vlm.VLMClient(
+        transport=transport, cache_dir=tmp_path / "c", backoff_base=0,
+        model="base", escalation_model="strong",
+    )
+    result = client.complete("s", "u", [_img(tmp_path)], escalate=lambda d: d.get("x") == 1)
+    assert result.data == {"x": 2}
+    assert transport.calls == ["base", "strong"]
+    assert client.stats["calls"] == 2
+    assert client.stats.get("escalations") == 1
+
+
+def test_no_escalation_when_predicate_false(tmp_path):
+    transport = _ModelTransport({"base": {"x": 9}, "strong": {"x": 2}})
+    client = vlm.VLMClient(
+        transport=transport, cache_dir=tmp_path / "c", backoff_base=0,
+        model="base", escalation_model="strong",
+    )
+    result = client.complete("s", "u", [_img(tmp_path)], escalate=lambda d: d.get("x") == 1)
+    assert result.data == {"x": 9}
+    assert transport.calls == ["base"]

@@ -39,6 +39,12 @@ CONCURRENCY = int(os.environ.get("ER_CONCURRENCY", "4"))
 MAX_RETRIES = int(os.environ.get("ER_MAX_RETRIES", "5"))
 REQUEST_TIMEOUT = float(os.environ.get("ER_REQUEST_TIMEOUT", "60"))
 
+# Image hardening: re-encode + shrink images larger than this (bytes) or wider than
+# this (px) to control token usage. Escalation model is optional (empty = disabled).
+MAX_IMAGE_BYTES = int(os.environ.get("ER_MAX_IMAGE_BYTES", "1500000"))
+MAX_IMAGE_DIM = int(os.environ.get("ER_MAX_IMAGE_DIM", "1568"))
+ESCALATION_MODEL = os.environ.get("OPENROUTER_ESCALATION_MODEL", "")
+
 
 class ConfigError(RuntimeError):
     """Raised when required runtime configuration (e.g. an API key) is missing."""
