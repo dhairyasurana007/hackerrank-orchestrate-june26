@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 
+import "./App.css";
+
 const API = (import.meta.env.VITE_API_URL as string) || "";
 
 type Claim = {
+  index: number;
   user_id: string;
   claim_object: string;
   user_claim: string;
@@ -10,11 +13,24 @@ type Claim = {
   image_paths: string[];
   labels: Record<string, string>;
 };
+type Prediction = Record<string, string>;
+
+const FIELDS = [
+  "claim_status", "severity", "issue_type", "object_part",
+  "evidence_standard_met", "valid_image", "risk_flags",
+  "supporting_image_ids", "evidence_standard_met_reason", "claim_status_justification",
+];
+
+function imageUrl(path: string) {
+  return `${API}/api/image?path=${encodeURIComponent(path)}`;
+}
 
 export function App() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selected, setSelected] = useState<Claim | null>(null);
-  const [error, setError] = useState<string>("");
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/claims?input=test`)
@@ -23,28 +39,82 @@ export function App() {
       .catch((err) => setError(String(err)));
   }, []);
 
+  function select(claim: Claim) {
+    setSelected(claim);
+    setPrediction(null);
+    setError("");
+  }
+
+  function runVerification(claim: Claim) {
+    setRunning(true);
+    setError("");
+    fetch(`${API}/api/run?input=test&strategy=two_stage&index=${claim.index}`, { method: "POST" })
+      .then((response) => response.json())
+      .then((data) => setPrediction((data.predictions?.[0] as Prediction) ?? null))
+      .catch((err) => setError(String(err)))
+      .finally(() => setRunning(false));
+  }
+
   return (
-    <main>
-      <h1>Evidence Review Dashboard</h1>
-      {error ? <p role="alert">{error}</p> : null}
-      <p>{claims.length} claims</p>
-      <ul>
-        {claims.map((claim) => (
-          <li key={claim.user_id + claim.image_paths.join()}>
-            <button onClick={() => setSelected(claim)}>
-              {claim.claim_object} - {claim.user_id}
+    <div className="app">
+      <header>
+        <h1>Evidence Review Dashboard</h1>
+        <span>{claims.length} claims</span>
+      </header>
+      {error ? <p className="error">{error}</p> : null}
+      <div className="layout">
+        <aside className="list">
+          {claims.map((claim) => (
+            <button
+              key={claim.index}
+              className={selected?.index === claim.index ? "claim active" : "claim"}
+              onClick={() => select(claim)}
+            >
+              <span className={`tag ${claim.claim_object}`}>{claim.claim_object}</span>
+              <span className="uid">{claim.user_id}</span>
             </button>
-          </li>
-        ))}
-      </ul>
-      {selected ? (
-        <section>
-          <h2>
-            {selected.claim_object} ({selected.user_id})
-          </h2>
-          <p>{selected.user_claim}</p>
-        </section>
-      ) : null}
-    </main>
+          ))}
+        </aside>
+        <main className="detail">
+          {selected ? (
+            <>
+              <h2>
+                <span className={`tag ${selected.claim_object}`}>{selected.claim_object}</span>
+                {selected.user_id}
+              </h2>
+              <p className="transcript">{selected.user_claim}</p>
+              <div className="images">
+                {selected.image_paths.map((path, i) => (
+                  <img key={path} src={imageUrl(path)} alt={selected.image_ids[i]} />
+                ))}
+              </div>
+              <button className="run" onClick={() => runVerification(selected)} disabled={running}>
+                {running ? "Running..." : "Run verification"}
+              </button>
+              {prediction ? (
+                <div className="prediction">
+                  {FIELDS.map((field) => (
+                    <div className="row" key={field}>
+                      <span className="k">{field}</span>
+                      <span className="v">
+                        {field === "claim_status" ? (
+                          <span className={`badge ${prediction[field]}`}>{prediction[field]}</span>
+                        ) : (
+                          prediction[field]
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="empty">
+              Select a claim to view its transcript, images, and run verification.
+            </p>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }

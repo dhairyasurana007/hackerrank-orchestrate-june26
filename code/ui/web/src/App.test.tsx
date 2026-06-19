@@ -10,6 +10,7 @@ beforeEach(() => {
         Promise.resolve({
           claims: [
             {
+              index: 0,
               user_id: "user_001",
               claim_object: "car",
               user_claim: "rear bumper dent",
@@ -26,5 +27,5 @@ beforeEach(() => {
 test("renders claims from the API", async () => {
   render(<App />);
   expect(screen.getByText("Evidence Review Dashboard")).toBeTruthy();
-  await waitFor(() => expect(screen.getByText(/car - user_001/)).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("user_001")).toBeTruthy());
 });

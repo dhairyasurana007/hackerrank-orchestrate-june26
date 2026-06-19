@@ -2,26 +2,34 @@
 
 A thin wrapper over the CLI: it does not reimplement any decision logic. /api/claims
 lists claims, /api/run invokes the same pipeline code/main.py uses, and /api/image
-serves dataset images (path-validated). Read-only except for triggering runs.
+serves dataset images (path-validated, re-encoded so browsers can render them).
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 
 import config
 import main as runner
 from data import loaders, schema
+from vlm import client as vlm
 
 app = FastAPI(title="Evidence Review Dashboard")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
+_BROWSER_TYPES = {
+    "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "gif": "image/gif",
+}
+
 
 def _input_path(name):
     return config.SAMPLE_CLAIMS_CSV if name == "sample" else config.CLAIMS_CSV
+
+
+def _claim_paths(record):
+    return [p.strip() for p in record.image_paths.split(";") if p.strip()]
 
 
 @app.get("/api/claims")
@@ -29,14 +37,15 @@ def get_claims(input: str = Query("test")):
     records = loaders.load_claims(_input_path(input))
     claims = [
         {
+            "index": i,
             "user_id": r.user_id,
             "claim_object": r.claim_object,
             "user_claim": r.user_claim,
             "image_ids": [img.image_id for img in r.images],
-            "image_paths": [str(img.path) for img in r.images],
+            "image_paths": _claim_paths(r),
             "labels": dict(r.labels),
         }
-        for r in records
+        for i, r in enumerate(records)
     ]
     return {"input": input, "count": len(claims), "claims": claims}
 
@@ -45,13 +54,16 @@ def get_claims(input: str = Query("test")):
 def run_claims(
     input: str = Query("test"),
     strategy: str = Query("two_stage"),
+    index: int | None = Query(None),
     limit: int | None = Query(None),
 ):
     strat = runner.STRATEGIES.get(strategy)
     if strat is None:
         raise HTTPException(400, f"unknown strategy {strategy}")
     records = loaders.load_claims(_input_path(input))
-    if limit:
+    if index is not None:
+        records = records[index : index + 1]
+    elif limit:
         records = records[:limit]
     histories = loaders.load_user_history(config.USER_HISTORY_CSV)
     rules = loaders.load_evidence_requirements(config.EVIDENCE_REQUIREMENTS_CSV)
@@ -68,4 +80,8 @@ def get_image(path: str = Query(...)):
         raise HTTPException(403, "path outside images directory")
     if not target.is_file():
         raise HTTPException(404, "image not found")
-    return FileResponse(target)
+    fmt = vlm._sniff_format(target.read_bytes())
+    if fmt in _BROWSER_TYPES:
+        return Response(target.read_bytes(), media_type=_BROWSER_TYPES[fmt])
+    # HEIC/AVIF/unknown -> re-encode to JPEG so every browser can render it.
+    return Response(vlm._reencode_to_jpeg(target, config.MAX_IMAGE_DIM), media_type="image/jpeg")
