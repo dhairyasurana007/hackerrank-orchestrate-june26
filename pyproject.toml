@@ -9,3 +9,4 @@ select = ["E", "F", "I", "W"]
 [tool.pytest.ini_options]
 pythonpath = ["code"]
 testpaths = ["code/tests"]
+addopts = "--basetemp=.pytest_tmp"

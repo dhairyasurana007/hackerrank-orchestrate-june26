@@ -7,3 +7,4 @@ output.csv
 .ruff_cache/
 code/ui/web/node_modules/
 code/ui/web/dist/
+.pytest_tmp/

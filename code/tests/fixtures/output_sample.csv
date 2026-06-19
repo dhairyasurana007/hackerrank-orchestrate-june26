@@ -1,0 +1,3 @@
+"user_id","image_paths","user_claim","claim_object","evidence_standard_met","evidence_standard_met_reason","risk_flags","issue_type","object_part","claim_status","claim_status_justification","supporting_image_ids","valid_image","severity"
+"user_001","images/test/case_001/img_1.jpg","Customer: rear bumper dent.","car","true","Rear bumper visible.","none","dent","rear_bumper","supported","Dent visible on rear bumper.","img_1","true","medium"
+"user_002","images/test/case_002/img_1.jpg","Customer: trackpad damage.","laptop","true","Trackpad visible.","damage_not_visible;manual_review_required","none","trackpad","contradicted","No damage visible on trackpad.","img_1","true","none"

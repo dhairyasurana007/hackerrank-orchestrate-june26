@@ -19,3 +19,12 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install -r code/requirements.txt -r code/requirements-dev.txt
       - run: pytest code/ -q
+  schema-validation:
+    name: Output schema validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r code/requirements.txt
+      - run: python code/tools/schema_lint.py code/tests/fixtures/output_sample.csv
