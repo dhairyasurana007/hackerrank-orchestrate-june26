@@ -9,7 +9,18 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ImportError:  # python-dotenv is optional
+    load_dotenv = None
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+if load_dotenv is not None:
+    # Load a gitignored .env at the repo root so OPENROUTER_API_KEY (and optional
+    # overrides) can live there instead of the shell environment.
+    load_dotenv(REPO_ROOT / ".env")
+
 DATASET_DIR = REPO_ROOT / "dataset"
 IMAGES_DIR = DATASET_DIR / "images"
 
