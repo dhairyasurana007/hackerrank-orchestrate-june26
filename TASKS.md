@@ -438,9 +438,11 @@ report. **Workflow:** CI green. **Done when:** README reproducible; packaging ve
 
 ### FINAL-6 — `feat: reviewer dashboard (React + FastAPI)`  → optional demo UI (no PLAN unit)
 
-**Implements:** an **optional** read-only reviewer dashboard to visually browse claims + predictions.
-Not required by the spec (the grader never sees it) — a demo / judge-interview aid. Build only after
-the full pipeline + eval are green.
+**Implements:** an **optional** reviewer dashboard to browse claims + predictions and re-run the
+verification on demand. **The website is a thin wrapper over the CLI** — internally it invokes the
+exact same pipeline `code/main.py` uses; no decision logic is reimplemented in the web layer. Not
+required by the spec (the grader never sees it) — a demo / judge-interview aid. Build only after the
+full pipeline + eval are green.
 
 **Files:**
 - Backend: `code/ui/api/__init__.py`, `code/ui/api/main.py` (FastAPI), `code/tests/test_ui_api.py`;
@@ -454,13 +456,17 @@ the full pipeline + eval are green.
 - Deployment: `render.yaml` (repo root) — a Render Blueprint defining the backend web service and the frontend static site.
 
 **Details:**
-- **Backend (read-only, no VLM, no secrets):** `GET /api/claims` → rows joining the input columns
-  (`claims.csv`/`sample_claims.csv`) with the predicted fields from `output.csv`. `GET /api/image?path=…`
-  → serves a local image, **path-validated to stay under `dataset/images/`** (reject `..` traversal).
-  No write endpoints.
+- **Backend — a thin wrapper over the CLI (single source of truth):** the API must NOT duplicate any
+  decision logic. It reuses exactly what the terminal runs — import `code/main.py`'s `run` plus the
+  strategy / `rules` modules (preferred), or shell out to `python code/main.py`. Endpoints:
+  - `GET /api/claims` → input columns joined with the latest predictions (a cached `output.csv` / snapshot).
+  - `POST /api/run` (whole batch) and/or `POST /api/claims/{idx}/run` (one claim) → invokes the CLI
+    pipeline and returns the structured result. The on-disk cache makes repeats instant.
+  - `GET /api/image?path=…` → serves a local image, **path-validated under `dataset/images/`** (reject `..`).
 - **Frontend:** a claims list/table (object, `claim_status`, `severity`, `risk_flags`); click a claim →
   detail view rendering the transcript, the images (with `supporting_image_ids` highlighted), all
-  predicted fields, risk flags, and the justifications. Pure presentation of existing `output.csv`.
+  predicted fields, risk flags, and the justifications. A **Re-run** action calls `POST /api/run` so the
+  page shows freshly-computed results straight from the CLI pipeline.
 
 **Local test:**
 - Backend (pytest): `/api/claims` returns the merged rows; `/api/image` serves a valid image and
@@ -475,8 +481,9 @@ predictions render correctly.
 Render from a single file. Two services:
 - **FastAPI backend** — a Render `web` service (Python env): build `pip install -r code/ui/requirements.txt`;
   start `uvicorn ui.api.main:app --host 0.0.0.0 --port $PORT` with `rootDir: code` (or set
-  `PYTHONPATH=code`, since `code/` is the source root, not an importable `code` package). Read-only,
-  so **no secrets** (`OPENROUTER_API_KEY` is not needed at serve time).
+  `PYTHONPATH=code`, since `code/` is the source root, not an importable `code` package). Because the
+  dashboard runs the CLI pipeline live, set `OPENROUTER_API_KEY` as a Render **secret env var** on this
+  service (a browse-only deployment can omit it and serve the committed predictions snapshot instead).
 - **React frontend** — a Render `static` site: build `cd code/ui/web && npm ci && npm run build`;
   `staticPublishPath: code/ui/web/dist`. Inject the backend URL at build time via env var
   (e.g. `VITE_API_URL`) and add a rewrite so client-side routes fall back to `index.html`.
