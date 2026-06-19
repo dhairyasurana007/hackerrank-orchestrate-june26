@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+code/cache/
+output.csv
+.pytest_cache/
+.ruff_cache/
+code/ui/web/node_modules/
+code/ui/web/dist/
