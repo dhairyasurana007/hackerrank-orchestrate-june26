@@ -63,7 +63,10 @@ def test_main_writes_valid_output(tmp_path, monkeypatch):
     out = tmp_path / "output.csv"
     monkeypatch.setitem(runner.STRATEGIES, "single_pass", _good_row)
     monkeypatch.setattr(runner, "build_client", lambda: None)
-    code = runner.main(["--input", "sample", "--limit", "3", "--out", str(out), "--workers", "1"])
+    code = runner.main(
+        ["--input", "sample", "--limit", "3", "--out", str(out), "--workers", "1",
+         "--strategy", "single_pass"]
+    )
     assert code == 0
     rows = _read_rows(out)
     assert rows[0] == list(schema.OUTPUT_COLUMNS)
@@ -74,5 +77,8 @@ def test_main_limit_processes_exactly_n(tmp_path, monkeypatch):
     out = tmp_path / "o.csv"
     monkeypatch.setitem(runner.STRATEGIES, "single_pass", _good_row)
     monkeypatch.setattr(runner, "build_client", lambda: None)
-    runner.main(["--input", "test", "--limit", "5", "--out", str(out), "--workers", "1"])
+    runner.main(
+        ["--input", "test", "--limit", "5", "--out", str(out), "--workers", "1",
+         "--strategy", "single_pass"]
+    )
     assert len(_read_rows(out)) == 1 + 5

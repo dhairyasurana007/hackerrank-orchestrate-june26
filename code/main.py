@@ -59,7 +59,7 @@ def _print_summary(out_path, rows, client, elapsed, strategy):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run evidence-review over a claims CSV.")
-    parser.add_argument("--strategy", choices=sorted(STRATEGIES), default="single_pass")
+    parser.add_argument("--strategy", choices=sorted(STRATEGIES), default="two_stage")
     parser.add_argument("--input", choices=("test", "sample"), default="test")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--out", default=str(config.OUTPUT_PATH))
