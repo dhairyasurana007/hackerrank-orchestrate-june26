@@ -1,0 +1,30 @@
+# Render Blueprint for the reviewer dashboard (FINAL-6).
+# Backend: FastAPI web service that wraps the CLI. Frontend: static React/Vite site.
+services:
+  - type: web
+    name: evidence-review-api
+    runtime: python
+    rootDir: code
+    plan: free
+    buildCommand: pip install -r requirements.txt -r ui/requirements.txt
+    startCommand: uvicorn ui.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Required only for live /api/run (the CLI pipeline). Set in the Render dashboard.
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+  - type: web
+    name: evidence-review-web
+    runtime: static
+    rootDir: code/ui/web
+    plan: free
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Point the frontend at the API service URL above.
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
