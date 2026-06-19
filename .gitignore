@@ -8,3 +8,6 @@ output.csv
 code/ui/web/node_modules/
 code/ui/web/dist/
 .pytest_tmp/
+.venv/
+venv/
+*.egg-info/
