@@ -451,6 +451,7 @@ the full pipeline + eval are green.
   (Node 20: `npm ci`, `npm run lint`, `npm run build`, `npm test`) and add the API tests to the
   **Unit tests** job.
 - `.gitignore`: add `code/ui/web/node_modules/`, `code/ui/web/dist/`.
+- Deployment: `render.yaml` (repo root) — a Render Blueprint defining the backend web service and the frontend static site.
 
 **Details:**
 - **Backend (read-only, no VLM, no secrets):** `GET /api/claims` → rows joining the input columns
@@ -469,6 +470,21 @@ the full pipeline + eval are green.
 
 **Live smoke (local):** run `uvicorn` + `npm run dev`, open the dashboard, confirm a claim's images +
 predictions render correctly.
+
+**Deployment (Render):** add a `render.yaml` Blueprint at the repo root so the dashboard deploys to
+Render from a single file. Two services:
+- **FastAPI backend** — a Render `web` service (Python env): build `pip install -r code/ui/requirements.txt`;
+  start `uvicorn ui.api.main:app --host 0.0.0.0 --port $PORT` with `rootDir: code` (or set
+  `PYTHONPATH=code`, since `code/` is the source root, not an importable `code` package). Read-only,
+  so **no secrets** (`OPENROUTER_API_KEY` is not needed at serve time).
+- **React frontend** — a Render `static` site: build `cd code/ui/web && npm ci && npm run build`;
+  `staticPublishPath: code/ui/web/dist`. Inject the backend URL at build time via env var
+  (e.g. `VITE_API_URL`) and add a rewrite so client-side routes fall back to `index.html`.
+- **Data availability:** the backend reads `output.csv` + `dataset/images/`. `dataset/images/` is in
+  the repo, but `output.csv` is gitignored — for the deployed demo, commit a predictions snapshot
+  (e.g. `code/ui/api/sample_output.csv`) and point the API at it, so the live site has data without a
+  key or a pipeline run.
+- **CORS:** allow the static site's origin on the FastAPI service.
 
 **Workflow:** add the **Dashboard build & tests (React/Vite)** job; all jobs — **Lint (ruff)**, **Unit tests (pytest, mocked VLM)** (incl. API tests), **Output schema validation**, and **Dashboard build & tests** — green.
 
