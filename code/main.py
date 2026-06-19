@@ -13,11 +13,11 @@ from pathlib import Path
 
 import config
 from data import loaders, schema
-from pipeline import rules, single_pass
+from pipeline import rules, single_pass, two_stage
 from vlm import prompts
 from vlm.client import VLMClient
 
-STRATEGIES = {"single_pass": single_pass.process}
+STRATEGIES = {"single_pass": single_pass.process, "two_stage": two_stage.process}
 
 
 def _input_path(name):
