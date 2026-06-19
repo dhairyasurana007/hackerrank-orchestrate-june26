@@ -89,7 +89,14 @@ export function App() {
                 ))}
               </div>
               <button className="run" onClick={() => runVerification(selected)} disabled={running}>
-                {running ? "Running..." : "Run verification"}
+                {running ? (
+                  <>
+                    <span className="spinner" />
+                    Running...
+                  </>
+                ) : (
+                  "Run verification"
+                )}
               </button>
               {prediction ? (
                 <div className="prediction">
