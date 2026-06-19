@@ -17,7 +17,6 @@ services:
     name: evidence-review-web
     runtime: static
     rootDir: code/ui/web
-    plan: free
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:
