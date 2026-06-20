@@ -51,6 +51,7 @@ export function App() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [generating, setGenerating] = useState(false);
   const [source, setSource] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${API}/api/claims?input=test`)
@@ -59,7 +60,8 @@ export function App() {
         setClaims(data.claims as Claim[]);
         setSource((data.source as string) ?? "");
       })
-      .catch((err) => setError(String(err)));
+      .catch((err) => setError(String(err)))
+      .finally(() => setLoading(false));
   }, []);
 
   function select(claim: Claim) {
@@ -107,7 +109,13 @@ export function App() {
         <div className="brand">
           <h1>Evidence Review Dashboard</h1>
           <p className="sub">
-            Loaded <strong>{source || "n/a"}</strong> · {claims.length} claims
+            {loading ? (
+              "Loading claims..."
+            ) : (
+              <>
+                Loaded <strong>{source || "claims.csv"}</strong> · {claims.length} claims
+              </>
+            )}
           </p>
         </div>
         <div className="upload">
