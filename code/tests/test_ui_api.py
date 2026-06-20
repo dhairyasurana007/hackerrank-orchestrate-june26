@@ -47,3 +47,23 @@ def test_run_returns_predictions(monkeypatch):
     data = resp.json()
     assert data["count"] == 2
     assert data["predictions"][0]["claim_status"] == "supported"
+
+
+def test_generate_returns_downloadable_csv(monkeypatch):
+    monkeypatch.setitem(runner.STRATEGIES, "two_stage", _good_row)
+    monkeypatch.setattr(runner, "build_client", lambda: None)
+    csv_content = (
+        '"user_id","image_paths","user_claim","claim_object"\n'
+        '"user_001","images/test/case_001/img_1.jpg","Customer: dent","car"\n'
+    )
+    resp = client.post(
+        "/api/generate",
+        files={"file": ("claims.csv", csv_content, "text/csv")},
+        params={"strategy": "two_stage"},
+    )
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert "attachment" in resp.headers["content-disposition"]
+    lines = resp.text.strip().splitlines()
+    assert lines[0].startswith('"user_id"')
+    assert len(lines) == 2

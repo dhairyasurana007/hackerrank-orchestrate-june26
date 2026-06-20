@@ -6,7 +6,12 @@ serves dataset images (path-validated, re-encoded so browsers can render them).
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query, Response
+import csv
+import io
+import tempfile
+from pathlib import Path
+
+from fastapi import FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 import config
@@ -70,6 +75,35 @@ def run_claims(
     rows = runner.run(records, strat, runner.build_client(), histories, rules)
     preds = [dict(zip(schema.OUTPUT_COLUMNS, schema.to_row(o), strict=True)) for o in rows]
     return {"strategy": strategy, "count": len(preds), "predictions": preds}
+
+
+@app.post("/api/generate")
+async def generate(file: UploadFile = File(...), strategy: str = Query("two_stage")):
+    """Run an uploaded claims CSV through the CLI pipeline and stream back output.csv."""
+    strat = runner.STRATEGIES.get(strategy)
+    if strat is None:
+        raise HTTPException(400, f"unknown strategy {strategy}")
+    content = await file.read()
+    tmp = tempfile.NamedTemporaryFile("wb", suffix=".csv", delete=False)
+    try:
+        tmp.write(content)
+        tmp.close()
+        records = loaders.load_claims(Path(tmp.name))
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
+    histories = loaders.load_user_history(config.USER_HISTORY_CSV)
+    rules = loaders.load_evidence_requirements(config.EVIDENCE_REQUIREMENTS_CSV)
+    rows = runner.run(records, strat, runner.build_client(), histories, rules)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, quoting=csv.QUOTE_ALL)
+    writer.writerow(schema.OUTPUT_COLUMNS)
+    for row in rows:
+        writer.writerow(schema.to_row(row))
+    return Response(
+        buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=output.csv"},
+    )
 
 
 @app.get("/api/image")

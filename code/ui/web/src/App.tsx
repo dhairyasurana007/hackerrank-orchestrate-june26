@@ -48,6 +48,8 @@ export function App() {
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/api/claims?input=test`)
@@ -72,11 +74,51 @@ export function App() {
       .finally(() => setRunning(false));
   }
 
+  function generate() {
+    if (!uploadFile) return;
+    setGenerating(true);
+    setError("");
+    const form = new FormData();
+    form.append("file", uploadFile);
+    fetch(`${API}/api/generate?strategy=two_stage`, { method: "POST", body: form })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "output.csv";
+        link.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((err) => setError(String(err)))
+      .finally(() => setGenerating(false));
+  }
+
   return (
     <div className="app">
       <header>
         <h1>Evidence Review Dashboard</h1>
         <span>{claims.length} claims</span>
+        <div className="upload">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+          />
+          <button className="run" onClick={generate} disabled={!uploadFile || generating}>
+            {generating ? (
+              <>
+                <span className="spinner" />
+                Generating...
+              </>
+            ) : (
+              "Generate output.csv"
+            )}
+          </button>
+        </div>
       </header>
       {error ? <p className="error">{error}</p> : null}
       <div className="layout">
