@@ -24,10 +24,24 @@ if load_dotenv is not None:
 DATASET_DIR = REPO_ROOT / "dataset"
 IMAGES_DIR = DATASET_DIR / "images"
 
-CLAIMS_CSV = DATASET_DIR / "claims.csv"
-SAMPLE_CLAIMS_CSV = DATASET_DIR / "sample_claims.csv"
-USER_HISTORY_CSV = DATASET_DIR / "user_history.csv"
-EVIDENCE_REQUIREMENTS_CSV = DATASET_DIR / "evidence_requirements.csv"
+
+def _pick(*names):
+    """First dataset file that exists, else the last candidate path.
+
+    The platform ships test.csv / sample.csv (in claims.zip); the starter repo
+    ships claims.csv / sample_claims.csv. This resolves either naming automatically.
+    """
+    for name in names:
+        candidate = DATASET_DIR / name
+        if candidate.exists():
+            return candidate
+    return DATASET_DIR / names[-1]
+
+
+CLAIMS_CSV = _pick("test.csv", "claims.csv")
+SAMPLE_CLAIMS_CSV = _pick("sample.csv", "sample_claims.csv")
+USER_HISTORY_CSV = _pick("user_history.csv")
+EVIDENCE_REQUIREMENTS_CSV = _pick("evidence_requirements.csv")
 
 OUTPUT_PATH = REPO_ROOT / "output.csv"
 CACHE_DIR = REPO_ROOT / "code" / "cache"

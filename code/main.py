@@ -21,7 +21,11 @@ STRATEGIES = {"single_pass": single_pass.process, "two_stage": two_stage.process
 
 
 def _input_path(name):
-    return config.SAMPLE_CLAIMS_CSV if name == "sample" else config.CLAIMS_CSV
+    if name == "sample":
+        return config.SAMPLE_CLAIMS_CSV
+    if name == "test":
+        return config.CLAIMS_CSV
+    return Path(name)
 
 
 def build_client():
@@ -60,7 +64,7 @@ def _print_summary(out_path, rows, client, elapsed, strategy):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run evidence-review over a claims CSV.")
     parser.add_argument("--strategy", choices=sorted(STRATEGIES), default="two_stage")
-    parser.add_argument("--input", choices=("test", "sample"), default="test")
+    parser.add_argument("--input", default="test", help="test, sample, or a path to a claims CSV")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--out", default=str(config.OUTPUT_PATH))
     parser.add_argument("--workers", type=int, default=None)
