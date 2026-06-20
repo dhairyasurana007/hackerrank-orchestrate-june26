@@ -10,6 +10,64 @@ Read [`problem_statement.md`](./problem_statement.md) for the full task spec, in
 
 ---
 
+## Solution: website & local usage
+
+This repo contains a complete solution under [`code/`](./code/) (see [`code/README.md`](./code/README.md) for full details). It ships as a CLI pipeline plus an optional reviewer dashboard.
+
+### Access the website
+
+A hosted reviewer dashboard wraps the **same** CLI pipeline:
+
+- **Website:** https://evidence-review-web.onrender.com
+- Browse the loaded claims, read each claim's conversation as a chat, view its submitted images, and **Run verification** on a single claim.
+- **Generate output.csv** (bottom bar) runs the whole loaded dataset — or a CSV you drag-and-drop / upload — and downloads the predictions.
+
+> The backend runs the model live, so real predictions require `OPENROUTER_API_KEY` to be set on the API service. The free Render dynos cold-start, so the first request after idle can take ~30s.
+
+### Run the tool locally
+
+```bash
+git clone <your-repo-url>
+cd hackerrank-orchestrate-june26
+pip install -r code/requirements.txt
+
+# put your OpenRouter key in a gitignored .env at the repo root (auto-loaded)
+echo OPENROUTER_API_KEY=sk-or-your-key > .env
+
+# generate predictions for the test set -> output.csv
+python code/main.py --input test
+python code/tools/schema_lint.py output.csv      # validate the output
+
+# evaluate the two strategies on the labeled sample set
+python code/evaluation/main.py
+```
+
+Useful flags: `--strategy {single_pass,two_stage}` (default `two_stage`), `--input {test,sample,<path>}`, `--limit N`, `--workers N`.
+
+### Run the dashboard locally (optional)
+
+```bash
+# backend (FastAPI) — from the repo root
+pip install -r code/ui/requirements.txt
+uvicorn ui.api.main:app --app-dir code --port 8000
+
+# frontend (Vite/React) — in a second terminal
+cd code/ui/web
+npm install
+echo VITE_API_URL=http://localhost:8000 > .env
+npm run dev        # then open the printed http://localhost:5173
+```
+
+### Tests / lint
+
+```bash
+pip install -r code/requirements-dev.txt
+ruff check code/
+pytest code/ -q
+```
+
+---
+
 ## Contents
 
 1. [Repository layout](#repository-layout)
