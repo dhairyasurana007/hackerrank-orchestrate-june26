@@ -36,27 +36,28 @@ body {
 .brand h1 { margin: 0; font-size: 18px; font-weight: 600; }
 .brand .sub { margin: 2px 0 0; font-size: 12px; color: #9fb3c8; }
 
-.upload { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.filebtn {
-  display: inline-block;
-  padding: 7px 14px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-size: 13px;
+/* Drag-and-drop upload (top half) */
+.dropzone-wrap { max-width: 1180px; margin: 0 auto; padding: 20px 20px 0; }
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44vh;
+  border: 2px dashed #b9c6d6;
+  border-radius: 14px;
+  background: #fff;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
 }
-.filebtn:hover { background: rgba(255, 255, 255, 0.2); }
-.fname {
-  font-size: 12px;
-  color: #cbd6e2;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fname.muted { color: #7a93ab; }
+.dropzone:hover { border-color: #1d4ed8; }
+.dropzone.active { border-color: #1d4ed8; background: #eff5ff; }
+.dz-inner { padding: 24px; pointer-events: none; }
+.dz-icon { color: #1d4ed8; margin-bottom: 6px; }
+.dz-title { margin: 0; font-size: 19px; font-weight: 600; color: #243b53; }
+.dz-sub { margin: 4px 0 0; font-size: 13px; color: #829ab1; }
+.dz-file { margin: 16px 0 0; font-size: 13px; color: #1d4ed8; font-weight: 600; }
+.dz-actions { display: flex; justify-content: center; margin-top: 14px; }
 
 /* Buttons */
 .btn {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type DragEvent, useEffect, useState } from "react";
 
 import "./App.css";
 
@@ -56,6 +56,7 @@ export function App() {
   const [running, setRunning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const [source, setSource] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -110,6 +111,13 @@ export function App() {
       .finally(() => setGenerating(false));
   }
 
+  function onDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) setUploadFile(file);
+  }
+
   return (
     <div className="app">
       <div className="appbar">
@@ -125,32 +133,59 @@ export function App() {
               </p>
             </div>
           </div>
-          <div className="upload">
-            <label className="filebtn">
-              Upload CSV
-              <input
-                type="file"
-                accept=".csv"
-                hidden
-                onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
-              />
-            </label>
-            <span className={uploadFile ? "fname" : "fname muted"}>
-              {uploadFile ? uploadFile.name : "no file selected"}
-            </span>
-            <button className="btn primary" onClick={generate} disabled={!uploadFile || generating}>
-              {generating ? (
-                <>
-                  <span className="spinner" />
-                  Generating
-                </>
-              ) : (
-                "Generate output.csv"
-              )}
-            </button>
-          </div>
         </div>
       </div>
+
+      <section className="dropzone-wrap">
+        <label
+          className={dragActive ? "dropzone active" : "dropzone"}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={onDrop}
+        >
+          <input
+            type="file"
+            accept=".csv"
+            hidden
+            onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+          />
+          <div className="dz-inner">
+            <svg
+              className="dz-icon"
+              width="46"
+              height="46"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 16V4" />
+              <path d="m6 10 6-6 6 6" />
+              <path d="M4 20h16" />
+            </svg>
+            <p className="dz-title">Drag &amp; drop a claims CSV here</p>
+            <p className="dz-sub">or click to browse</p>
+            {uploadFile ? <p className="dz-file">Selected: {uploadFile.name}</p> : null}
+          </div>
+        </label>
+        <div className="dz-actions">
+          <button className="btn primary" onClick={generate} disabled={!uploadFile || generating}>
+            {generating ? (
+              <>
+                <span className="spinner" />
+                Generating
+              </>
+            ) : (
+              "Generate output.csv"
+            )}
+          </button>
+        </div>
+      </section>
 
       <div className="container">
         {error ? <p className="error">{error}</p> : null}
