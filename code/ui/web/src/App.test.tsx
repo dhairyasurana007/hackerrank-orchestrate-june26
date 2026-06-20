@@ -26,6 +26,6 @@ beforeEach(() => {
 
 test("renders claims from the API", async () => {
   render(<App />);
-  expect(screen.getByText("Evidence Review Dashboard")).toBeTruthy();
+  expect(screen.getByText("Claims Evidence Review")).toBeTruthy();
   await waitFor(() => expect(screen.getByText("user_001")).toBeTruthy());
 });
