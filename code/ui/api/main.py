@@ -79,19 +79,26 @@ def run_claims(
 
 
 @app.post("/api/generate")
-async def generate(file: UploadFile = File(...), strategy: str = Query("two_stage")):
-    """Run an uploaded claims CSV through the CLI pipeline and stream back output.csv."""
+async def generate(
+    file: UploadFile | None = File(None),
+    input: str = Query("test"),
+    strategy: str = Query("two_stage"),
+):
+    """Run a claims CSV through the CLI pipeline (the upload if given, else the default)."""
     strat = runner.STRATEGIES.get(strategy)
     if strat is None:
         raise HTTPException(400, f"unknown strategy {strategy}")
-    content = await file.read()
-    tmp = tempfile.NamedTemporaryFile("wb", suffix=".csv", delete=False)
-    try:
-        tmp.write(content)
-        tmp.close()
-        records = loaders.load_claims(Path(tmp.name))
-    finally:
-        Path(tmp.name).unlink(missing_ok=True)
+    if file is not None:
+        content = await file.read()
+        tmp = tempfile.NamedTemporaryFile("wb", suffix=".csv", delete=False)
+        try:
+            tmp.write(content)
+            tmp.close()
+            records = loaders.load_claims(Path(tmp.name))
+        finally:
+            Path(tmp.name).unlink(missing_ok=True)
+    else:
+        records = loaders.load_claims(_input_path(input))
     histories = loaders.load_user_history(config.USER_HISTORY_CSV)
     rules = loaders.load_evidence_requirements(config.EVIDENCE_REQUIREMENTS_CSV)
     rows = runner.run(records, strat, runner.build_client(), histories, rules)

@@ -67,3 +67,14 @@ def test_generate_returns_downloadable_csv(monkeypatch):
     lines = resp.text.strip().splitlines()
     assert lines[0].startswith('"user_id"')
     assert len(lines) == 2
+
+
+def test_generate_default_dataset_without_upload(monkeypatch):
+    monkeypatch.setitem(runner.STRATEGIES, "two_stage", _good_row)
+    monkeypatch.setattr(runner, "build_client", lambda: None)
+    resp = client.post("/api/generate", params={"input": "sample", "strategy": "two_stage"})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    lines = resp.text.strip().splitlines()
+    assert lines[0].startswith('"user_id"')
+    assert len(lines) == 1 + 20

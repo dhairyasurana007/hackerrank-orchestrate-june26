@@ -91,12 +91,11 @@ export function App() {
   }
 
   function generate() {
-    if (!uploadFile) return;
     setGenerating(true);
     setError("");
     const form = new FormData();
-    form.append("file", uploadFile);
-    fetch(`${API}/api/generate?strategy=two_stage`, { method: "POST", body: form })
+    if (uploadFile) form.append("file", uploadFile);
+    fetch(`${API}/api/generate?input=test&strategy=two_stage`, { method: "POST", body: form })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.blob();
@@ -294,10 +293,10 @@ export function App() {
       <div className="genbar">
         <span className="genhint">
           {uploadFile
-            ? `Ready to process the uploaded CSV: ${uploadFile.name}`
-            : "Upload a CSV in the drop zone above to enable batch generation"}
+            ? `Will process the uploaded CSV: ${uploadFile.name}`
+            : `Will process the loaded dataset (${source || "claims.csv"})`}
         </span>
-        <button className="btn primary wide" onClick={generate} disabled={!uploadFile || generating}>
+        <button className="btn primary wide" onClick={generate} disabled={generating}>
           {generating ? (
             <>
               <span className="spinner" />
