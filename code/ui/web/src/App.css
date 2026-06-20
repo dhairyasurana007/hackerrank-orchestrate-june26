@@ -57,7 +57,24 @@ body {
 .dz-title { margin: 0; font-size: 19px; font-weight: 600; color: #243b53; }
 .dz-sub { margin: 4px 0 0; font-size: 13px; color: #829ab1; }
 .dz-file { margin: 16px 0 0; font-size: 13px; color: #1d4ed8; font-weight: 600; }
-.dz-actions { display: flex; justify-content: center; margin-top: 14px; }
+.zone-label { margin-bottom: 12px; }
+.zone-label h2 { margin: 0; font-size: 15px; font-weight: 700; color: #102a43; }
+.zone-label p { margin: 3px 0 0; font-size: 13px; color: #627d98; max-width: 760px; }
+
+/* Bottom generate bar */
+.genbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 22px 20px 40px;
+  margin-top: 12px;
+  border-top: 1px solid #d9e2ec;
+  background: #fff;
+}
+.genhint { font-size: 13px; color: #627d98; }
+.btn.wide { min-width: 260px; padding: 12px 32px; font-size: 14px; justify-content: center; }
 
 /* Buttons */
 .btn {

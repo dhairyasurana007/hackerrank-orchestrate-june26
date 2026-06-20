@@ -139,6 +139,13 @@ export function App() {
       </div>
 
       <section className="dropzone-wrap">
+        <div className="zone-label">
+          <h2>Batch — generate predictions for a whole CSV</h2>
+          <p>
+            Upload a claims CSV; the pipeline runs every row and produces a downloadable
+            output.csv. (Different from per-claim review below.)
+          </p>
+        </div>
         <label
           className={dragActive ? "dropzone active" : "dropzone"}
           onDragOver={(event) => {
@@ -175,21 +182,16 @@ export function App() {
             {uploadFile ? <p className="dz-file">Selected: {uploadFile.name}</p> : null}
           </div>
         </label>
-        <div className="dz-actions">
-          <button className="btn primary" onClick={generate} disabled={!uploadFile || generating}>
-            {generating ? (
-              <>
-                <span className="spinner" />
-                Generating
-              </>
-            ) : (
-              "Generate output.csv"
-            )}
-          </button>
-        </div>
       </section>
 
       <div className="container">
+        <div className="zone-label">
+          <h2>Review — verify one claim at a time</h2>
+          <p>
+            Browse the loaded dataset and run verification on a single selected claim. (Different
+            from the batch CSV generator above.)
+          </p>
+        </div>
         {error ? <p className="error">{error}</p> : null}
         <div className="layout">
           <aside className="panel queue">
@@ -287,6 +289,24 @@ export function App() {
             )}
           </main>
         </div>
+      </div>
+
+      <div className="genbar">
+        <span className="genhint">
+          {uploadFile
+            ? `Ready to process the uploaded CSV: ${uploadFile.name}`
+            : "Upload a CSV in the drop zone above to enable batch generation"}
+        </span>
+        <button className="btn primary wide" onClick={generate} disabled={!uploadFile || generating}>
+          {generating ? (
+            <>
+              <span className="spinner" />
+              Generating
+            </>
+          ) : (
+            "Generate output.csv"
+          )}
+        </button>
       </div>
     </div>
   );
