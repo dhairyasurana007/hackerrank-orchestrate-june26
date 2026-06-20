@@ -11,3 +11,4 @@ code/ui/web/dist/
 .venv/
 venv/
 *.egg-info/
+code.zip
