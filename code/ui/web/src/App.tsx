@@ -65,8 +65,10 @@ export function App() {
     fetch(`${API}/api/claims?input=test`)
       .then((response) => response.json())
       .then((data) => {
-        setClaims(data.claims as Claim[]);
+        const list = data.claims as Claim[];
+        setClaims(list);
         setSource((data.source as string) ?? "");
+        if (list.length > 0) setSelected(list[0]);
       })
       .catch((err) => setError(String(err)))
       .finally(() => setLoading(false));
