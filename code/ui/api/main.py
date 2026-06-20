@@ -39,7 +39,8 @@ def _claim_paths(record):
 
 @app.get("/api/claims")
 def get_claims(input: str = Query("test")):
-    records = loaders.load_claims(_input_path(input))
+    path = _input_path(input)
+    records = loaders.load_claims(path)
     claims = [
         {
             "index": i,
@@ -52,7 +53,7 @@ def get_claims(input: str = Query("test")):
         }
         for i, r in enumerate(records)
     ]
-    return {"input": input, "count": len(claims), "claims": claims}
+    return {"input": input, "source": path.name, "count": len(claims), "claims": claims}
 
 
 @app.post("/api/run")

@@ -50,11 +50,15 @@ export function App() {
   const [error, setError] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [source, setSource] = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/claims?input=test`)
       .then((response) => response.json())
-      .then((data) => setClaims(data.claims as Claim[]))
+      .then((data) => {
+        setClaims(data.claims as Claim[]);
+        setSource((data.source as string) ?? "");
+      })
       .catch((err) => setError(String(err)));
   }, []);
 
@@ -100,14 +104,25 @@ export function App() {
   return (
     <div className="app">
       <header>
-        <h1>Evidence Review Dashboard</h1>
-        <span>{claims.length} claims</span>
+        <div className="brand">
+          <h1>Evidence Review Dashboard</h1>
+          <p className="sub">
+            Loaded <strong>{source || "n/a"}</strong> · {claims.length} claims
+          </p>
+        </div>
         <div className="upload">
-          <input
-            type="file"
-            accept=".csv"
-            onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
-          />
+          <label className="filebtn">
+            Choose CSV
+            <input
+              type="file"
+              accept=".csv"
+              hidden
+              onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <span className={uploadFile ? "fname" : "fname muted"}>
+            {uploadFile ? uploadFile.name : "no file selected"}
+          </span>
           <button className="run" onClick={generate} disabled={!uploadFile || generating}>
             {generating ? (
               <>
